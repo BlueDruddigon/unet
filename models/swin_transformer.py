@@ -376,7 +376,7 @@ class BasicLayerDown(nn.Module):
         :param attn_drop: float - Dropout ratio of attention weight. Default: 0.
         :param drop_path: float - DropPath ratio. Default: 0.
         :param norm_layer: nn.Module - norm layer. Default: nn.LayerNorm.
-        :param downsample: nn.Module - Downsampler at the end of layer. Default: None.
+        :param downsample: nn.Module - Down-sampler at the end of the layer. Default: None.
         :param use_checkpoint: bool - Whether to use checkpointing to save memory. Default: False.
     """
     def __init__(
