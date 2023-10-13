@@ -5,6 +5,7 @@ import torch.nn as nn
 
 
 class DoubleConv(nn.Sequential):
+    """2-Layer Convolution followed by BatchNorm and Activation"""
     def __init__(self, in_channels: int, out_channels: int) -> None:
         layers = nn.ModuleList([
           nn.Conv2d(in_channels, out_channels, kernel_size=3),
@@ -19,6 +20,7 @@ class DoubleConv(nn.Sequential):
 
 
 class ContractComponent(nn.Module):
+    """Single Component of Contracting Path, which is a DoubleConv and a 2x2 MaxPool"""
     def __init__(self, in_channels: int, out_channels: int) -> None:
         super(ContractComponent, self).__init__()
         
@@ -26,11 +28,13 @@ class ContractComponent(nn.Module):
         self.pool = nn.MaxPool2d(2, stride=2)
     
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Include a conv feature map in the result for ExpandPath"""
         x = self.conv(x)
         return self.pool(x), x
 
 
 class ContractPath(nn.Module):
+    """Contracting Path with last DoubleConv without down sampling"""
     def __init__(self, in_channels: int = 1, out_channels: int = 1024, num_levels: int = 4) -> None:
         super(ContractPath, self).__init__()
         
@@ -47,6 +51,7 @@ class ContractPath(nn.Module):
         self.last = DoubleConv(512, out_channels)
     
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+        """Resulting output feature map with a list of previous feature maps for ExpandPath"""
         feats = []
         for blk in self.blocks:
             x, conv_feat = blk(x)
@@ -56,6 +61,7 @@ class ContractPath(nn.Module):
 
 
 class CenterCrop:
+    """Center Crop Feature Map for Concatenation"""
     def __call__(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
         _, _, h, w = x1.size()
         pad_x = (x2.size()[3] - x1.size()[3]) // 2
@@ -64,6 +70,7 @@ class CenterCrop:
 
 
 class ExpandComponent(nn.Module):
+    """Up-Convolution followed by CenterCrop and DoubleConv"""
     def __init__(self, in_channels: int, hidden_channels: int, out_channels: int) -> None:
         super(ExpandComponent, self).__init__()
         
@@ -76,10 +83,11 @@ class ExpandComponent(nn.Module):
         y = self.crop(x, y)
         x = torch.cat([y, x], dim=1)
         x = self.conv(x)
-        return x, y
+        return x
 
 
 class ExpandPath(nn.Module):
+    """Complete ExpandPath with the final output feature map"""
     def __init__(self, in_channels: int = 1024, out_channels: int = 2, num_levels: int = 4) -> None:
         super(ExpandPath, self).__init__()
         
@@ -96,12 +104,13 @@ class ExpandPath(nn.Module):
     
     def forward(self, x: torch.Tensor, y: List[torch.Tensor]) -> torch.Tensor:
         for i, blk in enumerate(self.blocks):
-            x, xi = blk(x, y[i])
+            x = blk(x, y[i])
         
         return x
 
 
 class UNet(nn.Module):
+    """U-Net architecture"""
     def __init__(self, in_channels: int = 1, hidden_channels: int = 1024, out_channels: int = 2) -> None:
         super(UNet, self).__init__()
         
@@ -110,6 +119,6 @@ class UNet(nn.Module):
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x, conv_feats = self.contract(x)
-        conv_feats = conv_feats[::-1]
+        conv_feats = conv_feats[::-1]  # Reverse the list of previous conv feats
         x = self.expand(x, conv_feats)
         return x
