@@ -8,10 +8,10 @@ class DoubleConv(nn.Sequential):
     """2-Layer Convolution followed by BatchNorm and Activation"""
     def __init__(self, in_channels: int, out_channels: int) -> None:
         layers = nn.ModuleList([
-          nn.Conv2d(in_channels, out_channels, kernel_size=3),
+          nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=0, bias=False),
           nn.BatchNorm2d(out_channels),
           nn.ReLU(inplace=True),
-          nn.Conv2d(out_channels, out_channels, kernel_size=3),
+          nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=0, bias=False),
           nn.BatchNorm2d(out_channels),
           nn.ReLU(inplace=True),
         ])
@@ -98,6 +98,7 @@ class ExpandPath(nn.Module):
           ExpandComponent(
             self.input_layers[i],
             self.output_layers[i],
+            # add a specific output channel of last block
             out_channels=out_channels if i == num_levels - 1 else self.output_layers[i]
           ) for i in range(num_levels)
         ])
