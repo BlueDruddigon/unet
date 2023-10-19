@@ -32,8 +32,8 @@ def train_one_epoch(
     
     end = time.time()
     for idx, (image, label) in pbar:
-        image = image.to(device=args.device, dtype=torch.float32)
-        label = label.to(device=args.device, dtype=torch.long)
+        image = image.to(device=args.device_id, dtype=torch.float32)
+        label = label.to(device=args.device_id, dtype=torch.long)
         
         with autocast(enabled=args.amp):
             pred = model(image)
@@ -83,8 +83,8 @@ def validation_epoch(
     
     end = time.time()
     for idx, (image, label) in pbar:
-        image = image.to(device=args.device, dtype=torch.float32)
-        label = label.to(device=args.device, dtype=torch.long)
+        image = image.to(device=args.device_id, dtype=torch.float32)
+        label = label.to(device=args.device_id, dtype=torch.long)
         
         with autocast(enabled=args.amp):
             pred = model(image)
