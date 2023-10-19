@@ -2,16 +2,17 @@ from typing import Tuple, List
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class DoubleConv(nn.Sequential):
     """2-Layer Convolution followed by BatchNorm and Activation"""
     def __init__(self, in_channels: int, out_channels: int) -> None:
         layers = nn.ModuleList([
-          nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=0, bias=False),
+          nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
           nn.BatchNorm2d(out_channels),
           nn.ReLU(inplace=True),
-          nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=0, bias=False),
+          nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
           nn.BatchNorm2d(out_channels),
           nn.ReLU(inplace=True),
         ])
@@ -60,27 +61,19 @@ class ContractPath(nn.Module):
         return self.last(x), feats
 
 
-class CenterCrop:
-    """Center Crop Feature Map for Concatenation"""
-    def __call__(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
-        _, _, h, w = x1.size()
-        pad_x = (x2.size()[3] - x1.size()[3]) // 2
-        pad_y = (x2.size()[2] - x1.size()[2]) // 2
-        return x2[:, :, pad_y:pad_y + h, pad_x:pad_x + w].clone()
-
-
 class ExpandComponent(nn.Module):
     """Up-Convolution followed by CenterCrop and DoubleConv"""
     def __init__(self, in_channels: int, hidden_channels: int, out_channels: int) -> None:
         super(ExpandComponent, self).__init__()
         
         self.up_conv = nn.ConvTranspose2d(in_channels, hidden_channels, kernel_size=2, stride=2)
-        self.crop = CenterCrop()
         self.conv = DoubleConv(in_channels, out_channels)
     
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         x = self.up_conv(x)
-        y = self.crop(x, y)
+        pad_x = y.size()[3] - x.size()[3]
+        pad_y = y.size()[2] - x.size()[2]
+        x = F.pad(x, [pad_x // 2, pad_x - pad_x//2, pad_y // 2, pad_y - pad_y//2])
         x = torch.cat([y, x], dim=1)
         x = self.conv(x)
         return x
@@ -112,7 +105,7 @@ class ExpandPath(nn.Module):
 
 class UNet(nn.Module):
     """U-Net architecture"""
-    def __init__(self, in_channels: int = 1, hidden_channels: int = 1024, out_channels: int = 2) -> None:
+    def __init__(self, in_channels: int, out_channels: int, hidden_channels: int = 1024) -> None:
         super(UNet, self).__init__()
         
         self.contract = ContractPath(in_channels, hidden_channels)
