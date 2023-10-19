@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument('--device-id', type=int, default=0, help='Device id if not using DDP')
     
     # Model and Training Parameters
-    parser.add_argument('--opt', choices=['adam', 'sgd'], type=str, default='adam', help='Optimizer Algorithm to use')
+    parser.add_argument('--opt', choices=['Adam', 'SGD'], type=str, default='Adam', help='Optimizer Algorithm to use')
     parser.add_argument('--lr', type=float, default=1e-5, help='Initial learning rate')
     parser.add_argument('--weight-decay', type=float, default=1e-8, help='Weight decay rule for Optimizer')
     parser.add_argument('--momentum', type=float, default=0.999, help='Momentum for SGD')
