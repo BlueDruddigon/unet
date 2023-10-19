@@ -1,0 +1,4 @@
+MODEL:
+  NAME: UNet
+  PRETRAINED: ""
+  DROP_PATH_RATE: 0.2
