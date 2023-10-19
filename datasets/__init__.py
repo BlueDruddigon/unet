@@ -17,8 +17,9 @@ __all__ = ['SynapseDataset', 'RandomGenerator', 'build_dataset']
 
 
 def build_dataset(args: argparse.Namespace):
-    # dataset and splits
-    dataset = SynapseDataset(args.data_root, is_train=True)
+    # transformer, dataset and splits
+    transformer = RandomGenerator(args.image_size)
+    dataset = SynapseDataset(args.data_root, transform=transformer, is_train=True)
     train_set, valid_set, test_set = random_split(
       dataset, [0.7, 0.15, 0.15], generator=torch.Generator().manual_seed(0)
     )

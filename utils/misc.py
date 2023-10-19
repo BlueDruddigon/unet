@@ -1,15 +1,27 @@
 import argparse
+import os
 import random
+from typing import Any, Dict
 
 import numpy as np
 import torch
 import torch.distributed as dist
+import yaml
 
 
 def seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+
+
+def load_configs(config_file_path: str) -> Dict[str, Any]:
+    assert os.path.exists(config_file_path), f'{config_file_path} file does not exist'
+    
+    with open(config_file_path, 'r') as f:
+        data: Dict[str, Any] = yaml.load(f, Loader=yaml.FullLoader)
+    
+    return data
 
 
 def init_distributed_mode(args: argparse.Namespace) -> None:

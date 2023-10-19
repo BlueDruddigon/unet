@@ -5,6 +5,7 @@ from typing import Union
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import yaml
 from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import fp16_compress_hook
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import Optimizer
@@ -22,7 +23,7 @@ def parse_args():
     
     # Data
     parser.add_argument('--data-root', required=True, type=str, default='', help='Path to the data root directory.')
-    parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes in the dataset.')
+    parser.add_argument('--num-classes', '-n', type=int, default=2, help='Number of classes in the dataset.')
     parser.add_argument('--rgb', action='store_true', help='Whether using RGB mode or not')
     
     # Distributed Training
@@ -33,7 +34,7 @@ def parse_args():
     parser.add_argument('--device-id', type=int, default=0, help='Device id if not using DDP')
     
     # Model and Training Parameters
-    parser.add_argument('--opt', choices=['Adam', 'SGD'], type=str, default='Adam', help='Optimizer Algorithm to use')
+    parser.add_argument('--opt', choices=['Adam', 'SGD'], type=str, default='SGD', help='Optimize Algorithm to use')
     parser.add_argument('--lr', type=float, default=1e-5, help='Initial learning rate')
     parser.add_argument('--weight-decay', type=float, default=1e-8, help='Weight decay rule for Optimizer')
     parser.add_argument('--momentum', type=float, default=0.999, help='Momentum for SGD')
@@ -41,6 +42,9 @@ def parse_args():
     parser.add_argument('--epochs', '-e', type=int, default=150, help='Number of training epochs')
     
     # Utilities
+    parser.add_argument(
+      '--config', '-c', type=str, default='configs/unet.yaml', help='Path to specific YAML config file'
+    )
     parser.add_argument('--valid-freq', type=int, default=10, help='Frequency of validation')
     parser.add_argument('--save-freq', type=int, default=5, help='Frequency of saving checkpoint')
     parser.add_argument('--save-dir', default='weights', type=str, help='Path to save checkpoint')
@@ -155,4 +159,10 @@ def main(args: argparse.Namespace):
 
 if __name__ == '__main__':
     args = parse_args()
+    # Load hyperparameters from config file
+    with open(args.config) as f:
+        hyper_params = yaml.safe_load(f)
+    args.n_classes = hyper_params['DATASET']['N_CLASSES'] or args.num_classes
+    args.n_channels = hyper_params['DATASET']['N_CHANNELS'] or 3 if args.rgb else 1
+    args.image_size = hyper_params['MODEL']['IMAGE_SIZE']
     main(args)
