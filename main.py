@@ -18,9 +18,9 @@ def parse_args():
     parser = argparse.ArgumentParser()
     
     # Data
-    parser.add_argument('--data-root', type=str, default='', help='Path to the data root directory.')
+    parser.add_argument('--data-root', required=True, type=str, default='', help='Path to the data root directory.')
     parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes in the dataset.')
-    parser.add_argument('--rgb', action='store_false', help='Whether using RGB mode or not')
+    parser.add_argument('--rgb', action='store_true', help='Whether using RGB mode or not')
     
     # Distributed Training
     parser.add_argument('--distributed', action='store_false', help='Whether using distributed data parallel')
@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=1e-5, help='Initial learning rate')
     parser.add_argument('--weight-decay', type=float, default=1e-8, help='Weight decay rule for Optimizer')
     parser.add_argument('--momentum', type=float, default=0.99, help='Momentum for SGD')
-    parser.add_argument('--batch-size', type=int, default=8, help='Batch size')
+    parser.add_argument('--batch-size', '-b', type=int, default=8, help='Batch size')
     parser.add_argument('--epochs', '-e', type=int, default=150, help='Number of training epochs')
     
     # Utilities
@@ -53,11 +53,10 @@ def main(args: argparse.Namespace):
     # seeding
     seed_everything(args.seed)
     
-    n_channels = 3 if args.rgb else 1
-    args.n_channels = n_channels
+    args.n_channels = 3 if args.rgb else 1
     
     # Model and Loss fn
-    model = UNet(in_channels=n_channels, out_channels=args.classes)
+    model = UNet(in_channels=args.n_channels, out_channels=args.classes)
     criterion = nn.BCEWithLogitsLoss()
     model = model.to(args.device_id)
     criterion = criterion.to(args.device_id)
