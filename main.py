@@ -89,7 +89,7 @@ def main(args: argparse.Namespace):
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     elif args.opt == 'Adam':
         optimizer = optim.Adam(
-          model.parameters(), lr=args.lr, betas=(0.9, args.momentum), weight_decay=args.weigt_decay
+          model.parameters(), lr=args.lr, betas=(0.9, args.momentum), weight_decay=args.weight_decay
         )
     else:
         raise ValueError()
