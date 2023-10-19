@@ -80,8 +80,8 @@ def main(args: argparse.Namespace):
     args.n_channels = 3 if args.rgb else 1
     
     # Model and Loss fn
-    model = UNet(in_channels=args.n_channels, out_channels=args.classes)
-    criterion = DiceCELoss(args.num_classes)
+    model = UNet(in_channels=args.n_channels, out_channels=args.n_classes)
+    criterion = DiceCELoss(args.n_classes)
     model = model.to(args.device_id)
     
     if args.distributed:
