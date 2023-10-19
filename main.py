@@ -1,11 +1,14 @@
 import argparse
 import os
+from typing import Union
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import fp16_compress_hook
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler, ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 
 from datasets import build_dataset
@@ -30,9 +33,10 @@ def parse_args():
     parser.add_argument('--device-id', type=int, default=0, help='Device id if not using DDP')
     
     # Model and Training Parameters
+    parser.add_argument('--opt', choices=['adam', 'sgd'], type=str, default='adam', help='Optimizer Algorithm to use')
     parser.add_argument('--lr', type=float, default=1e-5, help='Initial learning rate')
     parser.add_argument('--weight-decay', type=float, default=1e-8, help='Weight decay rule for Optimizer')
-    parser.add_argument('--momentum', type=float, default=0.99, help='Momentum for SGD')
+    parser.add_argument('--momentum', type=float, default=0.999, help='Momentum for SGD')
     parser.add_argument('--batch-size', '-b', type=int, default=8, help='Batch size')
     parser.add_argument('--epochs', '-e', type=int, default=150, help='Number of training epochs')
     
@@ -46,7 +50,22 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(args: argparse.Namespace):  # sourcery skip: extract-method
+def load_checkpoints(
+  args: argparse.Namespace, model: Union[nn.Module, DDP], optimizer: Optimizer, scheduler: Union[LRScheduler,
+                                                                                                 ReduceLROnPlateau]
+) -> None:
+    checkpoint = torch.load(args.resume, map_location=args.device_id)
+    if args.distributed:
+        model.module.load_state_dict(checkpoint['state_dict'])
+    else:
+        model.load_state_dict(checkpoint['state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    scheduler.load_state_dict(checkpoint['scheduler'])
+    args.start_epoch = checkpoint['epoch'] + 1
+    print(f'Resume from epoch {args.start_epoch}')
+
+
+def main(args: argparse.Namespace):
     if args.distributed:
         init_distributed_mode(args)
     
@@ -66,8 +85,15 @@ def main(args: argparse.Namespace):  # sourcery skip: extract-method
         model.register_comm_hook(None, fp16_compress_hook)
     
     # Optimizers
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
+    if args.opt == 'SGD':
+        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    elif args.opt == 'Adam':
+        optimizer = optim.Adam(
+          model.parameters(), lr=args.lr, betas=(0.9, args.momentum), weight_decay=args.weigt_decay
+        )
+    else:
+        raise ValueError()
+    scheduler = ReduceLROnPlateau(optimizer, 'max', patience=5)
     scaler = torch.cuda.amp.grad_scaler.GradScaler(enabled=args.amp)
     
     # Dataset and Loader
@@ -84,15 +110,7 @@ def main(args: argparse.Namespace):  # sourcery skip: extract-method
     # Resume from checkpoint
     args.start_epoch = 0
     if args.resume:
-        checkpoint = torch.load(args.resume, map_location=args.device_id)
-        if args.distributed:
-            model.module.load_state_dict(checkpoint['state_dict'])
-        else:
-            model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        scheduler.load_state_dict(checkpoint['scheduler'])
-        args.start_epoch = checkpoint['epoch'] + 1
-        print(f'Resume from epoch {args.start_epoch}')
+        load_checkpoints(args, model, optimizer, scheduler)
     else:
         print('Training from scratch.')
     
