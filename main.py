@@ -81,7 +81,6 @@ def main(args: argparse.Namespace):
     
     # Model and Loss fn
     model = UNet(in_channels=args.n_channels, out_channels=args.classes)
-    criterion = nn.CrossEntropyLoss() if args.num_classes > 1 else nn.BCEWithLogitsLoss()
     criterion = DiceCELoss(args.num_classes)
     model = model.to(args.device_id)
     
