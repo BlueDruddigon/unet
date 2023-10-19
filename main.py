@@ -46,7 +46,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(args: argparse.Namespace):
+def main(args: argparse.Namespace):  # sourcery skip: extract-method
     if args.distributed:
         init_distributed_mode(args)
     
@@ -57,7 +57,7 @@ def main(args: argparse.Namespace):
     
     # Model and Loss fn
     model = UNet(in_channels=args.n_channels, out_channels=args.classes)
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.CrossEntropyLoss() if args.classes > 1 else nn.BCEWithLogitsLoss()
     model = model.to(args.device_id)
     criterion = criterion.to(args.device_id)
     
@@ -84,7 +84,15 @@ def main(args: argparse.Namespace):
     # Resume from checkpoint
     args.start_epoch = 0
     if args.resume:
-        pass
+        checkpoint = torch.load(args.resume, map_location=args.device_id)
+        if args.distributed:
+            model.module.load_state_dict(checkpoint['state_dict'])
+        else:
+            model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        scheduler.load_state_dict(checkpoint['scheduler'])
+        args.start_epoch = checkpoint['epoch'] + 1
+        print(f'Resume from epoch {args.start_epoch}')
     else:
         print('Training from scratch.')
     

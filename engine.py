@@ -37,8 +37,6 @@ def train_one_epoch(
         
         with autocast(enabled=args.amp):
             pred = model(image)
-            print('pred.shape =', pred.shape)
-            print('label.shape =', label.shape)
             loss = criterion(pred, label)
         
         # Back-prop
