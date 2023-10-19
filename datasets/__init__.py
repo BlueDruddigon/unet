@@ -13,7 +13,7 @@ from torch.utils.data import (
 from .synapse import RandomGenerator, SynapseDataset
 from .transformations import *
 
-__all__ = ['SynapseDataset', 'RandomGenerator']
+__all__ = ['SynapseDataset', 'RandomGenerator', 'build_dataset']
 
 
 def build_dataset(args: argparse.Namespace):
