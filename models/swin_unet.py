@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional, Tuple, Union, Any
+from typing import Callable, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -795,7 +795,6 @@ class SwinUNet(nn.Module):
       patch_norm: bool = True,
       use_checkpoint: bool = False,
       final_upsample: bool = True,
-      **kwargs: Any
     ) -> None:
         super(SwinUNet, self).__init__()
         
