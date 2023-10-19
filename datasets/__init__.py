@@ -2,7 +2,12 @@ import argparse
 
 import torch
 from torch.utils.data import (
-    BatchSampler, DataLoader, DistributedSampler, random_split, RandomSampler, SequentialSampler,
+  BatchSampler,
+  DataLoader,
+  DistributedSampler,
+  random_split,
+  RandomSampler,
+  SequentialSampler,
 )
 
 from .synapse import RandomGenerator, SynapseDataset
@@ -13,7 +18,7 @@ __all__ = ['SynapseDataset', 'RandomGenerator']
 
 def build_dataset(args: argparse.Namespace):
     # dataset and splits
-    dataset = SynapseDataset(args.root, is_train=True)
+    dataset = SynapseDataset(args.data_root, is_train=True)
     train_set, valid_set, test_set = random_split(
       dataset, [0.7, 0.15, 0.15], generator=torch.Generator().manual_seed(0)
     )
