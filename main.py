@@ -14,6 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from datasets import build_dataset
 from engine import evaluate, train_one_epoch, validation_epoch
+from losses.dice import DiceCELoss
 from models import UNet
 from utils import cleanup_dist, init_distributed_mode, save_on_master, seed_everything
 
@@ -80,9 +81,9 @@ def main(args: argparse.Namespace):
     
     # Model and Loss fn
     model = UNet(in_channels=args.n_channels, out_channels=args.classes)
-    criterion = nn.CrossEntropyLoss() if args.classes > 1 else nn.BCEWithLogitsLoss()
+    criterion = nn.CrossEntropyLoss() if args.num_classes > 1 else nn.BCEWithLogitsLoss()
+    criterion = DiceCELoss(args.num_classes)
     model = model.to(args.device_id)
-    criterion = criterion.to(args.device_id)
     
     if args.distributed:
         model = DDP(model, device_ids=[args.device_id])
