@@ -18,6 +18,4 @@ logs/
 # env
 .env
 .venv
-env/*
-!env/.gitignore
 venv/
