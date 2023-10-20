@@ -16,7 +16,7 @@ from datasets import build_dataset
 from engine import evaluate, train_one_epoch, validation_epoch
 from losses.dice import DiceCELoss
 from models import UNet
-from utils import cleanup_dist, init_distributed_mode, save_on_master, seed_everything
+from utils import cleanup_dist, EarlyStopping, init_distributed_mode, save_on_master, seed_everything
 
 
 def parse_args():
@@ -99,6 +99,7 @@ def main(args: argparse.Namespace):
         raise ValueError()
     scheduler = ReduceLROnPlateau(optimizer, 'max', patience=5)
     scaler = torch.cuda.amp.grad_scaler.GradScaler(enabled=args.amp)
+    early_stopper = EarlyStopping(patience=5)
     
     # Dataset and Loader
     train_loader, valid_loader, test_loader = build_dataset(args)
@@ -131,6 +132,9 @@ def main(args: argparse.Namespace):
             writer.add_scalar('valid/loss', valid_loss, epoch)
             # Update scheduler's state
             scheduler.step(valid_loss)
+            if early_stopper.step(valid_loss):
+                print(f'Early Stopping at epoch {epoch}, current valid_loss: {valid_loss.item()}')
+                break
         
         # Save Checkpoint
         if epoch % args.save_freq == 0 and epoch > 0:
@@ -161,6 +165,16 @@ if __name__ == '__main__':
     args = parse_args()
     # Load hyperparameters from config file
     with open(args.config) as f:
+
+
+if __name__ == '__main__':
+    ae = EarlyStopping(min_delta=1e-4, patience=5, mode='max')
+    valid_losses = reversed(torch.linspace(1, 20, steps=10))
+    for valid_loss in valid_losses:
+        print(valid_loss)
+        if ae.step(valid_loss):
+            print('Early Stopping')
+            break
         hyper_params = yaml.safe_load(f)
     args.n_classes = hyper_params['DATASET']['N_CLASSES'] or args.num_classes
     args.n_channels = hyper_params['DATASET']['N_CHANNELS'] or 3 if args.rgb else 1
