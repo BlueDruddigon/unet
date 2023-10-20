@@ -20,4 +20,4 @@ logs/
 .venv
 env/
 venv/
-!/env/
+!env/.gitignore
