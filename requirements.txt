@@ -1,0 +1,9 @@
+numpy~=1.26.0
+torch~=2.1.0
+torchvision~=0.16.0
+pyyaml~=6.0.1
+timm~=0.9.7
+datasets~=2.14.5
+scipy~=1.11.3
+nibabel~=5.1.0
+tqdm~=4.66.1
