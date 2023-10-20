@@ -1,5 +1,6 @@
-from typing import Callable
+from typing import Callable, Union
 
+import numpy as np
 import torch
 
 
@@ -37,6 +38,8 @@ class EarlyStopping:
         :param metric: metric quantity to be monitored.
         :return: a boolean flag to manage if the training process should be stopped.
         """
+        if not isinstance(metric, torch.Tensor):
+            metric = torch.tensor(metric)
         if self.monitor_op(metric, self.best_score):
             self.best_score = metric
             self.counter = 0
