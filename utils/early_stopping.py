@@ -1,6 +1,5 @@
-from typing import Callable, Union
+from typing import Callable
 
-import numpy as np
 import torch
 
 

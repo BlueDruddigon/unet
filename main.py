@@ -48,6 +48,7 @@ def parse_args():
     )
     parser.add_argument('--valid-freq', type=int, default=10, help='Frequency of validation')
     parser.add_argument('--save-freq', type=int, default=5, help='Frequency of saving checkpoint')
+    parser.add_argument('--patience', type=int, default=5, help='Early Stopping Patience')
     parser.add_argument('--save-dir', default='weights', type=str, help='Path to save checkpoint')
     parser.add_argument('--log-dir', default='runs', type=str, help='Path to log dir')
     parser.add_argument('--resume', default='', type=str, help='Checkpointing to resume from')
@@ -99,7 +100,7 @@ def main(args: argparse.Namespace):
         raise ValueError()
     scheduler = ReduceLROnPlateau(optimizer, 'max', patience=5)
     scaler = torch.cuda.amp.grad_scaler.GradScaler(enabled=args.amp)
-    early_stopper = EarlyStopping(patience=5)
+    early_stopper = EarlyStopping(patience=args.patience)
     
     # Dataset and Loader
     train_loader, valid_loader, test_loader = build_dataset(args)
@@ -134,6 +135,20 @@ def main(args: argparse.Namespace):
             scheduler.step(valid_loss)
             if early_stopper.step(valid_loss):
                 print(f'Early Stopping at epoch {epoch}, current valid_loss: {valid_loss.item()}')
+                if args.distributed:
+                    save_on_master({
+                      'state_dict': model.module.state_dict(),
+                      'optimizer': optimizer.state_dict(),
+                      'scheduler': scheduler.state_dict(),
+                      'epoch': epoch
+                    }, f'{args.save_dir}/{epoch}.pth')
+                else:
+                    torch.save({
+                      'state_dict': model.state_dict(),
+                      'optimizer': optimizer.state_dict(),
+                      'scheduler': scheduler.state_dict(),
+                      'epoch': epoch
+                    }, f'{args.save_dir}/{epoch}.pth')
                 break
         
         # Save Checkpoint
@@ -147,7 +162,7 @@ def main(args: argparse.Namespace):
                 }, f'{args.save_dir}/{epoch}.pth')
             else:
                 torch.save({
-                  'state_dict': model.module.state_dict(),
+                  'state_dict': model.state_dict(),
                   'optimizer': optimizer.state_dict(),
                   'scheduler': scheduler.state_dict(),
                   'epoch': epoch
