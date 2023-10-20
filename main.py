@@ -165,16 +165,6 @@ if __name__ == '__main__':
     args = parse_args()
     # Load hyperparameters from config file
     with open(args.config) as f:
-
-
-if __name__ == '__main__':
-    ae = EarlyStopping(min_delta=1e-4, patience=5, mode='max')
-    valid_losses = reversed(torch.linspace(1, 20, steps=10))
-    for valid_loss in valid_losses:
-        print(valid_loss)
-        if ae.step(valid_loss):
-            print('Early Stopping')
-            break
         hyper_params = yaml.safe_load(f)
     args.n_classes = hyper_params['DATASET']['N_CLASSES'] or args.num_classes
     args.n_channels = hyper_params['DATASET']['N_CHANNELS'] or 3 if args.rgb else 1
