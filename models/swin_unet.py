@@ -512,7 +512,7 @@ class PatchEmbed(nn.Module):
     """
     def __init__(
       self,
-      img_size: int = 224,
+      img_size: Union[int, Tuple[int, int]] = 224,
       patch_size: int = 4,
       in_channels: int = 3,
       embed_dim: int = 96,
@@ -520,7 +520,7 @@ class PatchEmbed(nn.Module):
     ) -> None:
         super(PatchEmbed, self).__init__()
         
-        self.img_size = to_2tuple(img_size)
+        self.img_size = to_2tuple(img_size) if isinstance(img_size, int) else img_size
         self.patch_size = to_2tuple(patch_size)
         
         self.patches_resolution = [self.img_size[0] // self.patch_size[0], self.img_size[1] // self.patch_size[1]]
@@ -776,7 +776,7 @@ class Decoder(nn.Module):
 class SwinUNet(nn.Module):
     def __init__(
       self,
-      img_size: int = 224,
+      img_size: Union[int, Tuple[int, int]] = 224,
       patch_size: int = 4,
       in_channels: int = 3,
       num_classes: int = 2,
@@ -955,16 +955,3 @@ class SwinUNet(nn.Module):
         flops += self.bottleneck.flops()
         flops += self.decoder.flops()
         return flops
-
-
-def main():
-    device = torch.device('mps')
-    di = torch.randn(1, 3, 224, 224).to(device)
-    su = SwinUNet().to(device)
-    with torch.no_grad():
-        out = su(di)
-        print(out.shape)
-
-
-if __name__ == "__main__":
-    main()
