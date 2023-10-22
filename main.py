@@ -1,11 +1,11 @@
 import argparse
 import os
-from typing import Union
+from typing import Tuple, Union
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import yaml
+from torch.cuda.amp.grad_scaler import GradScaler
 from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import fp16_compress_hook
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import Optimizer
@@ -15,7 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 from datasets import build_dataset
 from engine import evaluate, train_one_epoch, validation_epoch
 from losses.dice import DiceCELoss
-from models import UNet
+from models import build_model
 from utils import cleanup_dist, EarlyStopping, init_distributed_mode, save_on_master, seed_everything
 
 
@@ -44,7 +44,10 @@ def parse_args():
     
     # Utilities
     parser.add_argument(
-      '--config', '-c', type=str, default='configs/unet.yaml', help='Path to specific YAML config file'
+      '--config', '-c', type=str, default='configs/swin_unet.yaml', help='Path to specific YAML config file'
+    )
+    parser.add_argument(
+      '--model-name', type=str, default='swin_unet', choices=['swin_unet', 'unet'], help='Name of the Model to use'
     )
     parser.add_argument('--valid-freq', type=int, default=10, help='Frequency of validation')
     parser.add_argument('--save-freq', type=int, default=5, help='Frequency of saving checkpoint')
@@ -71,6 +74,27 @@ def load_checkpoints(
     print(f'Resume from epoch {args.start_epoch}')
 
 
+def initialize_algorithm(
+  args: argparse.Namespace
+) -> Tuple[nn.Module, nn.Module, optim.Optimizer, Union[LRScheduler, ReduceLROnPlateau], EarlyStopping, GradScaler]:
+    # Model and Loss Fn
+    model, args = build_model(args)
+    criterion = DiceCELoss(args.n_classes).to(args.device_id)
+    
+    # Optimizers
+    if args.opt == 'SGD':
+        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    elif args.opt == 'Adam':
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    else:
+        raise NotImplementedError
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5)
+    early_stopper = EarlyStopping(mode='min', patience=args.patience)
+    grad_scaler = GradScaler(enabled=args.amp)
+    
+    return model, criterion, optimizer, scheduler, early_stopper, grad_scaler, args
+
+
 def main(args: argparse.Namespace):
     if args.distributed:
         init_distributed_mode(args)
@@ -78,29 +102,13 @@ def main(args: argparse.Namespace):
     # seeding
     seed_everything(args.seed)
     
-    args.n_channels = 3 if args.rgb else 1
+    # Initialize
+    model, criterion, optimizer, scheduler, early_stopper, scaler, args = initialize_algorithm(args)
     
-    # Model and Loss fn
-    model = UNet(in_channels=args.n_channels, out_channels=args.n_classes)
-    criterion = DiceCELoss(args.n_classes)
-    model = model.to(args.device_id)
-    
+    # DDP Wrapper
     if args.distributed:
         model = DDP(model, device_ids=[args.device_id])
         model.register_comm_hook(None, fp16_compress_hook)
-    
-    # Optimizers
-    if args.opt == 'SGD':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-    elif args.opt == 'Adam':
-        optimizer = optim.Adam(
-          model.parameters(), lr=args.lr, betas=(0.9, args.momentum), weight_decay=args.weight_decay
-        )
-    else:
-        raise ValueError()
-    scheduler = ReduceLROnPlateau(optimizer, 'max', patience=5)
-    scaler = torch.cuda.amp.grad_scaler.GradScaler(enabled=args.amp)
-    early_stopper = EarlyStopping(patience=args.patience)
     
     # Dataset and Loader
     train_loader, valid_loader, test_loader = build_dataset(args)
@@ -126,47 +134,26 @@ def main(args: argparse.Namespace):
           model, criterion, scaler=scaler, optimizer=optimizer, loader=train_loader, epoch=epoch, args=args
         )
         writer.add_scalar('train/loss', loss_value, epoch)
+        current_state_dict = {
+          'state_dict': model.module.state_dict() if args.distributed else model.state_dict(),
+          'optimizer': optimizer.state_dict(),
+          'scheduler': scheduler.state_dict(),
+          'epoch': epoch
+        }
         
         # Validation Process
         if epoch % args.valid_freq == 0 and epoch > 0:
             valid_loss = validation_epoch(model, criterion, loader=valid_loader, epoch=epoch, args=args)
             writer.add_scalar('valid/loss', valid_loss, epoch)
-            # Update scheduler's state
             scheduler.step(valid_loss)
             if early_stopper.step(valid_loss):
                 print(f'Early Stopping at epoch {epoch}, current valid_loss: {valid_loss.item()}')
-                if args.distributed:
-                    save_on_master({
-                      'state_dict': model.module.state_dict(),
-                      'optimizer': optimizer.state_dict(),
-                      'scheduler': scheduler.state_dict(),
-                      'epoch': epoch
-                    }, f'{args.save_dir}/{epoch}.pth')
-                else:
-                    torch.save({
-                      'state_dict': model.state_dict(),
-                      'optimizer': optimizer.state_dict(),
-                      'scheduler': scheduler.state_dict(),
-                      'epoch': epoch
-                    }, f'{args.save_dir}/{epoch}.pth')
+                save_on_master(current_state_dict, f'{args.save_dir}/{epoch}.pth')
                 break
         
         # Save Checkpoint
         if epoch % args.save_freq == 0 and epoch > 0:
-            if args.distributed:
-                save_on_master({
-                  'state_dict': model.module.state_dict(),
-                  'optimizer': optimizer.state_dict(),
-                  'scheduler': scheduler.state_dict(),
-                  'epoch': epoch
-                }, f'{args.save_dir}/{epoch}.pth')
-            else:
-                torch.save({
-                  'state_dict': model.state_dict(),
-                  'optimizer': optimizer.state_dict(),
-                  'scheduler': scheduler.state_dict(),
-                  'epoch': epoch
-                }, f'{args.save_dir}/{epoch}.pth')
+            save_on_master(current_state_dict, f'{args.save_dir}/{epoch}.pth')
     
     # Test phase
     print('End of training. Start evaluation on test set.')
@@ -178,10 +165,4 @@ def main(args: argparse.Namespace):
 
 if __name__ == '__main__':
     args = parse_args()
-    # Load hyperparameters from config file
-    with open(args.config) as f:
-        hyper_params = yaml.safe_load(f)
-    args.n_classes = hyper_params['DATASET']['N_CLASSES'] or args.num_classes
-    args.n_channels = hyper_params['DATASET']['N_CHANNELS'] or 3 if args.rgb else 1
-    args.image_size = hyper_params['MODEL']['IMAGE_SIZE']
     main(args)

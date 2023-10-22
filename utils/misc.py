@@ -51,8 +51,8 @@ def is_main_process() -> bool:
     return get_rank() == 0
 
 
-def save_on_master(*args, **kwargs) -> None:
-    if is_main_process():
+def save_on_master(is_dist: bool = False, *args, **kwargs) -> None:
+    if is_dist and is_main_process() or not is_dist:
         torch.save(*args, **kwargs)
 
 

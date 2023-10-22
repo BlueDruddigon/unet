@@ -24,7 +24,7 @@ class EarlyStopping:
         
         self.mode = mode
         if self.mode not in self.mode_dict:
-            raise NotImplementedError(f'This {self.mode} mode is currently not supported.')
+            raise NotImplementedError
         
         self.best_score = torch.tensor(torch.inf) if self.mode == 'min' else torch.tensor(-torch.inf)
     
