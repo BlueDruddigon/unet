@@ -1,14 +1,14 @@
 import glob
 import os
 import random
-from typing import Tuple, Callable, Optional, Union, List
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
 from scipy.ndimage import zoom
 from torch.utils.data import Dataset
 
-from .transformations import random_rotate, random_rot_flip
+from .transformations import random_rot_flip, random_rotate
 
 
 class RandomGenerator:

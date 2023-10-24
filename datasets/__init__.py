@@ -2,12 +2,7 @@ import argparse
 
 import torch
 from torch.utils.data import (
-  BatchSampler,
-  DataLoader,
-  DistributedSampler,
-  random_split,
-  RandomSampler,
-  SequentialSampler,
+    BatchSampler, DataLoader, DistributedSampler, random_split, RandomSampler, SequentialSampler,
 )
 
 from .synapse import RandomGenerator, SynapseDataset

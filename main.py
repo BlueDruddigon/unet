@@ -28,8 +28,8 @@ def parse_args():
     parser.add_argument('--rgb', action='store_true', help='Whether using RGB mode or not')
     
     # Distributed Training
-    parser.add_argument('--distributed', action='store_false', help='Whether using distributed data parallel')
-    parser.add_argument('--amp', action='store_false', help='Whether using Mixed Average Precision')
+    parser.add_argument('--distributed', action='store_true', help='Whether using distributed data parallel')
+    parser.add_argument('--amp', action='store_true', help='Whether using Mixed Average Precision')
     parser.add_argument('--seed', type=int, default=1245, help='Seed number')
     parser.add_argument('--num-workers', type=int, default=4, help='Number of workers for dataloader')
     parser.add_argument('--device-id', type=int, default=0, help='Device id if not using DDP')
@@ -37,8 +37,7 @@ def parse_args():
     # Model and Training Parameters
     parser.add_argument('--opt', choices=['Adam', 'SGD'], type=str, default='SGD', help='Optimize Algorithm to use')
     parser.add_argument('--lr', type=float, default=1e-5, help='Initial learning rate')
-    parser.add_argument('--weight-decay', type=float, default=1e-8, help='Weight decay rule for Optimizer')
-    parser.add_argument('--momentum', type=float, default=0.999, help='Momentum for SGD')
+    parser.add_argument('--momentum', type=float, default=0.99, help='Momentum for SGD')
     parser.add_argument('--batch-size', '-b', type=int, default=8, help='Batch size')
     parser.add_argument('--epochs', '-e', type=int, default=150, help='Number of training epochs')
     
@@ -83,9 +82,9 @@ def initialize_algorithm(
     
     # Optimizers
     if args.opt == 'SGD':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
     elif args.opt == 'Adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        optimizer = optim.Adam(model.parameters(), lr=args.lr)
     else:
         raise NotImplementedError
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5)
