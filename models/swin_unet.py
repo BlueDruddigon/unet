@@ -7,8 +7,7 @@ from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
 
 class MLP(nn.Sequential):
-    """2-Layer MLP impl
-    """
+    """2-Layer MLP impl"""
     def __init__(
       self,
       in_features: int,
@@ -929,7 +928,7 @@ class SwinUNet(nn.Module):
     
     def forward_output(self, x: torch.Tensor) -> torch.Tensor:
         H, W = self.input_resolution
-        B, L, C = x.shape
+        B, L, _ = x.shape
         assert L == H * W, f'{L} != {H*W}, input features has wrong size'
         
         if self.final_upsample:
