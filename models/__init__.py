@@ -4,6 +4,7 @@ from typing import Tuple
 import torch.nn as nn
 import yaml
 
+from .focal_unet import FocalUNet
 from .swin_unet import SwinUNet
 from .unet import UNet
 
