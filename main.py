@@ -62,7 +62,7 @@ def load_checkpoints(
   args: argparse.Namespace, model: Union[nn.Module, DDP], optimizer: Optimizer, scheduler: Union[LRScheduler,
                                                                                                  ReduceLROnPlateau]
 ) -> None:
-    checkpoint = torch.load(args.resume, map_location=args.device_id)
+    checkpoint = torch.load(args.resume, map_location=torch.device('cpu'))
     if args.distributed:
         model.module.load_state_dict(checkpoint['state_dict'])
     else:
