@@ -119,7 +119,7 @@ def evaluate(model: nn.Module, loader: DataLoader, args: argparse.Namespace) -> 
             label = label.to(args.device_id, dtype=torch.long)
             
             # Feed forward to the network
-            pred = model(image)
+            _ = model(image)
             # compute dice_coef score
             
             end = time.time()
