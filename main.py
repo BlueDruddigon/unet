@@ -158,8 +158,8 @@ def main(args: argparse.Namespace):
     
     # Test phase
     print('End of training. Start evaluation on test set.')
-    score = evaluate(model, loader=test_loader, args=args)
-    print(f'Test score: {score:.4f}')
+    dc, hd95 = evaluate(model, loader=test_loader, args=args)
+    print(f'Test phase completed. Mean dice: {dc:.4f}, Mean HD: {hd95:.4f}')
     
     cleanup_dist()
 

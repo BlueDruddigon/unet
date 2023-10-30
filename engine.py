@@ -1,6 +1,7 @@
 import argparse
 import time
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -8,6 +9,7 @@ from torch.cuda.amp import autocast, GradScaler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from metrics import compute_metrics
 from utils import AverageMeter
 
 
@@ -109,8 +111,8 @@ def evaluate(model: nn.Module, loader: DataLoader, args: argparse.Namespace) -> 
     pbar = tqdm(enumerate(loader), total=len(loader))
     
     # metric logger
-    scores = AverageMeter()
     running_time = AverageMeter()
+    metrics = 0.
     
     with autocast(enabled=args.amp):
         for idx, (image, label) in pbar:
@@ -118,19 +120,28 @@ def evaluate(model: nn.Module, loader: DataLoader, args: argparse.Namespace) -> 
             image = image.to(args.device_id, dtype=torch.float32)
             label = label.to(args.device_id, dtype=torch.long)
             
-            # Feed forward to the network
-            _ = model(image)
-            # compute dice_coef score
+            # Feed forward to the network and take the softmax
+            output = model(image)
+            output = torch.argmax(torch.softmax(output, dim=1), dim=1)
+            
+            # turn output and label to numpy format
+            y_true = label.squeeze(0).detach().cpu().numpy()
+            y_pred = output.squeeze(0).detach().cpu().numpy()
+            
+            metric_list = []
+            for i in range(args.num_classes):
+                # compute `dice_coef` and `hd95` scores of the class `i`
+                metric_list.append(compute_metrics(y_true == i, y_pred == i))
             
             end = time.time()
             # update metrics
             running_time.update(end - start)
-            scores.update(0, 1)
+            metrics += np.array(metric_list)
             
             # Update status bar
             s = f'Evaluation [{idx+1}/{len(loader)}] ' \
                 f'Time/b: {running_time.val:.2f} ({running_time.avg:.2f})s ' \
-                f'Score: {scores.val:.4f} ({scores.avg:.4f})'
+                f'Mean Dice: {np.mean(metrics, axis=0)[0]} Mean HD: {np.mean(metrics, axis=0)[1]}'
             pbar.set_description(s)
     
-    return scores.avg
+    return np.mean(metrics, axis=0)
