@@ -138,7 +138,7 @@ def evaluate(model: nn.Module, loader: DataLoader, args: argparse.Namespace) -> 
             # Update status bar
             s = f'Evaluation [{idx+1}/{len(loader)}] ' \
                 f'Time/b: {running_time.val:.2f} ({running_time.avg:.2f})s ' \
-                f'Mean Dice: {np.mean(metrics, axis=0)[0]} Mean HD: {np.mean(metrics, axis=0)[1]}'
+                f'Mean Dice: {np.mean(metrics, axis=0)[0]:.4f} Mean HD: {np.mean(metrics, axis=0)[1]:.4f}'
             pbar.set_description(s)
     
     return np.mean(metrics, axis=0)
