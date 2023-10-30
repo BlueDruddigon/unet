@@ -128,10 +128,7 @@ def evaluate(model: nn.Module, loader: DataLoader, args: argparse.Namespace) -> 
             y_true = label.squeeze(0).detach().cpu().numpy()
             y_pred = output.squeeze(0).detach().cpu().numpy()
             
-            metric_list = []
-            for i in range(args.num_classes):
-                # compute `dice_coef` and `hd95` scores of the class `i`
-                metric_list.append(compute_metrics(y_true == i, y_pred == i))
+            metric_list = [compute_metrics(y_true == i, y_pred == i) for i in range(args.num_classes)]
             
             end = time.time()
             # update metrics

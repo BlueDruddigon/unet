@@ -428,11 +428,8 @@ class BasicLayer(nn.Module):
         """
         B, _, _ = x.shape
         H, W = self.input_resolution
-        for idx, blk in enumerate(self.blocks):
-            if self.use_checkpoint:
-                x = checkpoint.checkpoint(blk, x)
-            else:
-                x = blk(x)
+        for blk in self.blocks:
+            x = checkpoint.checkpoint(blk, x) if self.use_checkpoint else blk(x)
         
         # Downsample if available
         if self.downsample is not None:
@@ -536,7 +533,7 @@ class Encoder(nn.Module):
         """
         x = self.pos_drop(self.patch_embed(x))
         x_downsamples = []
-        for idx, layer in enumerate(self.layers):
+        for layer in self.layers:
             x_downsamples.append(x)
             x = layer(x)
         
@@ -558,7 +555,7 @@ class Bottleneck(nn.Sequential):
       focal_level: int = 3,
       focal_window: int = 3,
       act_layer: Callable[..., nn.Module] = nn.GELU,
-      norm_layer: Optional[Callable[..., nn.Module]] = nn.LayerNorm,
+      norm_layer: Callable[..., nn.Module] = nn.LayerNorm,
       use_post_norm: bool = True,
       use_post_norm_in_modulation: bool = False,
       normalize_modulator: bool = False,
