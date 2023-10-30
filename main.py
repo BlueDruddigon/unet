@@ -161,7 +161,8 @@ def main(args: argparse.Namespace):
     dc, hd95 = evaluate(model, loader=test_loader, args=args)
     print(f'Test phase completed. Mean dice: {dc:.4f}, Mean HD: {hd95:.4f}')
     
-    cleanup_dist()
+    if args.distributed:
+        cleanup_dist()
 
 
 if __name__ == '__main__':
