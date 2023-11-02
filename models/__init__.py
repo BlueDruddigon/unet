@@ -22,9 +22,9 @@ def build_model(args: argparse.Namespace) -> Tuple[nn.Module, argparse.Namespace
         args.n_channels = hyper_params['DATASET']['N_CHANNELS'] or args.num_channels
         args.image_size = hyper_params['DATASET']['IMAGE_SIZE']
     if args.model_name == 'unet':
-        model = UNet(in_channels=args.num_channels, out_channels=args.num_classes)
+        model = UNet(in_channels=args.num_channels, n_classes=args.num_classes)
         if config_path:
-            model = UNet(in_channels=args.n_channels, out_channels=args.n_classes)
+            model = UNet(in_channels=args.n_channels, n_classes=args.n_classes)
     elif args.model_name == 'swin_unet':
         model = SwinUNet()
         if config_path:

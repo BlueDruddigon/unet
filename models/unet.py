@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -92,24 +92,27 @@ class ExpandPath(nn.Module):
             self.input_layers[i],
             self.output_layers[i],
             # add a specific output channel of last block
-            out_channels=out_channels if i == num_levels - 1 else self.output_layers[i]
+            out_channels=self.output_layers[i]
           ) for i in range(num_levels)
         ])
+        
+        self.output_proj = nn.Conv2d(self.output_layers[-1], out_channels, kernel_size=1)
     
     def forward(self, x: torch.Tensor, y: List[torch.Tensor]) -> torch.Tensor:
         for i, blk in enumerate(self.blocks):
             x = blk(x, y[i])
         
+        x = self.output_proj(x)
         return x
 
 
 class UNet(nn.Module):
     """U-Net architecture"""
-    def __init__(self, in_channels: int, out_channels: int, hidden_channels: int = 1024) -> None:
+    def __init__(self, in_channels: int, n_classes: int, hidden_channels: int = 1024) -> None:
         super(UNet, self).__init__()
         
         self.contract = ContractPath(in_channels, hidden_channels)
-        self.expand = ExpandPath(hidden_channels, out_channels)
+        self.expand = ExpandPath(hidden_channels, n_classes)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x, conv_feats = self.contract(x)
