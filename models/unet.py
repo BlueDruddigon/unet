@@ -3,6 +3,7 @@ from typing import List, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from timm.models.layers import trunc_normal_
 
 
 class DoubleConv(nn.Sequential):
@@ -113,6 +114,21 @@ class UNet(nn.Module):
         
         self.contract = ContractPath(in_channels, hidden_channels)
         self.expand = ExpandPath(hidden_channels, n_classes)
+        
+        self.apply(self._init_weights)
+    
+    @staticmethod
+    def _init_weights(m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.BatchNorm2d):
+            nn.init.constant_(m.weight, 1.0)
+            nn.init.constant_(m.bias, 0)
+            # freeze the bn layers
+            m.weight.requires_grad_(False)
+            m.bias.requires_grad_(False)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x, conv_feats = self.contract(x)
