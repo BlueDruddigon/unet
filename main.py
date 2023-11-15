@@ -51,16 +51,17 @@ def parse_args():
     parser.add_argument('--valid-freq', type=int, default=10, help='Frequency of validation')
     parser.add_argument('--save-freq', type=int, default=5, help='Frequency of saving checkpoint')
     parser.add_argument('--patience', type=int, default=5, help='Early Stopping Patience')
-    parser.add_argument('--save-dir', default='weights', type=str, help='Path to save checkpoint')
-    parser.add_argument('--log-dir', default='runs', type=str, help='Path to log dir')
+    parser.add_argument('--exp', default='runs', type=str, help='Path to log dir')
     parser.add_argument('--resume', default='', type=str, help='Checkpointing to resume from')
     
     return parser.parse_args()
 
 
 def load_checkpoints(
-  args: argparse.Namespace, model: Union[nn.Module, DDP], optimizer: Optimizer, scheduler: Union[LRScheduler,
-                                                                                                 ReduceLROnPlateau]
+  args: argparse.Namespace,
+  model: Union[nn.Module, DDP],
+  optimizer: Optimizer,
+  scheduler: Union[LRScheduler, ReduceLROnPlateau],
 ) -> None:
     checkpoint = torch.load(args.resume, map_location=torch.device('cpu'))
     if args.distributed:
@@ -115,11 +116,14 @@ def main(args: argparse.Namespace):
     train_loader, valid_loader, test_loader = build_dataset(args)
     
     # Create weights and logs dir
-    os.makedirs(args.save_dir, exist_ok=True)
+    os.makedirs(args.exp, exist_ok=True)
+    args.save_dir = os.path.join(args.exp, 'weights')
+    args.log_dir = os.path.join(args.exp, 'tensorboard')
     os.makedirs(args.log_dir, exist_ok=True)
+    os.makedirs(args.save_dir, exist_ok=True)
     
     # Tensorboard logger
-    tensorboard_dir = os.path.join(args.log_dir, 'tensorboard')
+    tensorboard_dir = os.path.join(args.log_dir)
     writer = SummaryWriter(tensorboard_dir)
     
     # Resume from checkpoint
