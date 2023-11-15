@@ -43,4 +43,4 @@ class SynapseDataset(Dataset):
             seed_everything(seed)
             label = self.transform(label)
         
-        return image, label
+        return image, label.squeeze(0)

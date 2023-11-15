@@ -9,7 +9,7 @@ class DiceLoss(nn.Module):
     def __init__(
       self,
       sigmoid: bool = False,
-      softmax: bool = False,
+      softmax: bool = True,
       reduction: str = 'mean',
       eps: float = 1e-7,
     ) -> None:

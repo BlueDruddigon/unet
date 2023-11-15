@@ -11,6 +11,7 @@ __all__ = ['SynapseDataset', 'get_default_transformations', 'build_dataset']
 def build_dataset(args: argparse.Namespace):
     # transformer, dataset and splits
     transformer = get_default_transformations(args.image_size)
+    
     train_set = SynapseDataset(args.data_root, phase='train', transform=transformer)
     valid_set = SynapseDataset(args.data_root, phase='valid', transform=transformer)
     test_set = SynapseDataset(args.data_root, phase='test', transform=transformer)
