@@ -43,10 +43,10 @@ def parse_args():
     
     # Utilities
     parser.add_argument(
-      '--config', '-c', type=str, default='configs/swin_unet.yaml', help='Path to specific YAML config file'
+      '--config', '-c', type=str, default='configs/unet.yaml', help='Path to specific YAML config file'
     )
     parser.add_argument(
-      '--model-name', type=str, default='swin_unet', choices=['swin_unet', 'unet'], help='Name of the Model to use'
+      '--model-name', type=str, default='unet', choices=['swin_unet', 'unet'], help='Name of the Model to use'
     )
     parser.add_argument('--valid-freq', type=int, default=10, help='Frequency of validation')
     parser.add_argument('--save-freq', type=int, default=5, help='Frequency of saving checkpoint')
@@ -87,7 +87,7 @@ def initialize_algorithm(
     if args.opt == 'SGD':
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
     elif args.opt == 'Adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr)
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999))
     else:
         raise NotImplementedError
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5)
@@ -119,6 +119,7 @@ def main(args: argparse.Namespace):
     exp_dir = os.path.join(args.exp, args.model_name)
     save_dir = os.path.join(exp_dir, 'weights')
     log_dir = os.path.join(exp_dir, 'tensorboard')
+    
     os.makedirs(exp_dir, exist_ok=True)
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(save_dir, exist_ok=True)
