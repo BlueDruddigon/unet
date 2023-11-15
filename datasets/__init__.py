@@ -1,23 +1,19 @@
 import argparse
 
-import torch
-from torch.utils.data import (
-    BatchSampler, DataLoader, DistributedSampler, random_split, RandomSampler, SequentialSampler,
-)
+from torch.utils.data import BatchSampler, DataLoader, DistributedSampler, RandomSampler, SequentialSampler
 
-from .synapse import RandomGenerator, SynapseDataset
-from .transformations import *
+from .synapse import SynapseDataset
+from .transformations import get_default_transformations
 
-__all__ = ['SynapseDataset', 'RandomGenerator', 'build_dataset']
+__all__ = ['SynapseDataset', 'get_default_transformations', 'build_dataset']
 
 
 def build_dataset(args: argparse.Namespace):
     # transformer, dataset and splits
-    transformer = RandomGenerator(args.image_size)
-    dataset = SynapseDataset(args.data_root, transform=transformer, is_train=True)
-    train_set, valid_set, test_set = random_split(
-      dataset, [0.7, 0.15, 0.15], generator=torch.Generator().manual_seed(0)
-    )
+    transformer = get_default_transformations(args.image_size)
+    train_set = SynapseDataset(args.data_root, phase='train', transform=transformer)
+    valid_set = SynapseDataset(args.data_root, phase='valid', transform=transformer)
+    test_set = SynapseDataset(args.data_root, phase='test', transform=transformer)
     
     # samplers
     if args.distributed:

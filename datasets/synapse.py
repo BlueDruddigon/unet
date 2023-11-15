@@ -1,53 +1,46 @@
 import glob
 import os
-import random
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
 import torch
-from scipy.ndimage import zoom
 from torch.utils.data import Dataset
 
-from .transformations import random_rot_flip, random_rotate
-
-
-class RandomGenerator:
-    def __init__(self, output_size: Union[List[int], Tuple[int, int]]) -> None:
-        self.output_size = output_size
-    
-    def __call__(self, image: np.ndarray, label: np.ndarray) -> Tuple[torch.Tensor, torch.LongTensor]:
-        if random.random() > 0.5:
-            image, label = random_rot_flip(image, label)
-        if random.random() > 0.5:
-            image, label = random_rotate(image, label)
-        
-        height, width = image.shape
-        if height != self.output_size[0] or width != self.output_size[1]:
-            image = zoom(image, (self.output_size[0] / height, self.output_size[1] / width), order=3)
-            label = zoom(label, (self.output_size[0] / height, self.output_size[1] / width), order=0)
-        image = torch.from_numpy(image.astype(np.float32)).unsqueeze(0)
-        label = torch.from_numpy(label.astype(np.float32))
-        return image, label.long()
+from utils.misc import seed_everything
 
 
 class SynapseDataset(Dataset):
-    def __init__(self, root: str, transform: Optional[Callable] = None, is_train: bool = True) -> None:
+    phases = ['train', 'valid', 'test']
+    
+    def __init__(self, root: str, phase: str = 'train', transform: Optional[Dict[str, Callable]] = None) -> None:
         super(SynapseDataset, self).__init__()
         
-        self.root = root
-        self.phase = 'train' if is_train else 'test'
-        self.transform = transform or RandomGenerator((224, 224))
+        assert phase in self.phases
         
-        self.ids = glob.glob(os.path.join(self.root, self.phase, '*.npz'))
+        self.root = root
+        self.transform = transform[phase] if transform is not None else None
+        self.ids = glob.glob(os.path.join(self.root, phase, '*.npz'))
     
     def __len__(self) -> int:
         return len(self.ids)
     
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.LongTensor]:
+        assert index <= len(self)
         data_path = self.ids[index]
+        
         data = np.load(data_path)
         image, label = data['image'], data['label']
         data.close()
+        
+        # convert to Tensor
+        image = torch.from_numpy(image).to(dtype=torch.float32).unsqueeze(0)  # (1, IMG_SIZE, IMG_SIZE)
+        label = torch.from_numpy(label).to(dtype=torch.float32).unsqueeze(0)  # (1, IMG_SIZE, IMG_SIZE)
+        
         if self.transform is not None:
-            image, label = self.transform(image, label)
+            seed = np.random.randint(0, 1362947)
+            seed_everything(seed)
+            image = self.transform(image)
+            seed_everything(seed)
+            label = self.transform(label)
+        
         return image, label

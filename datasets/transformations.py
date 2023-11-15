@@ -1,21 +1,25 @@
-from typing import Tuple
+from torchvision import transforms as T
 
-import numpy as np
-from scipy import ndimage
-
-
-def random_rot_flip(image: np.ndarray, label: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    k = np.random.randint(0, 4)  # direction to rotate
-    image = np.rot90(image, k)
-    label = np.rot90(label, k)
-    axis = np.random.randint(0, 2)  # axis for flipping
-    image = np.flip(image, axis=axis).copy()
-    label = np.flip(label, axis=axis).copy()
-    return image, label
+__all__ = ['get_default_transformations']
 
 
-def random_rotate(image: np.ndarray, label: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    angle = np.random.randint(-20, 20)
-    image = ndimage.rotate(image, angle, order=0, reshape=False)
-    label = ndimage.rotate(label, angle, order=0, reshape=False)
-    return image, label
+def get_default_transformations(img_size):
+    return {
+      'train': T.Compose([
+          T.Resize([img_size, img_size], antialias=True),
+          T.Normalize(mean=[0.5], std=[0.5]),
+          T.RandomChoice([
+            T.RandomHorizontalFlip(),
+            T.RandomVerticalFlip(),
+          ]),
+          T.RandomRotation((-0.2, 0.2)),
+        ]),
+      'valid': T.Compose([
+          T.Resize([img_size, img_size], antialias=True),
+          T.Normalize(mean=[0.5], std=[0.5]),
+        ]),
+      'test': T.Compose([
+          T.Resize([img_size, img_size], antialias=True),
+          T.Normalize(mean=[0.5], std=[0.5]),
+        ])
+    }
