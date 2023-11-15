@@ -116,15 +116,15 @@ def main(args: argparse.Namespace):
     train_loader, valid_loader, test_loader = build_dataset(args)
     
     # Create weights and logs dir
-    os.makedirs(args.exp, exist_ok=True)
-    args.save_dir = os.path.join(args.exp, 'weights')
-    args.log_dir = os.path.join(args.exp, 'tensorboard')
-    os.makedirs(args.log_dir, exist_ok=True)
-    os.makedirs(args.save_dir, exist_ok=True)
+    exp_dir = os.path.join(args.exp, args.model_name)
+    save_dir = os.path.join(exp_dir, 'weights')
+    log_dir = os.path.join(exp_dir, 'tensorboard')
+    os.makedirs(exp_dir, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
+    os.makedirs(save_dir, exist_ok=True)
     
     # Tensorboard logger
-    tensorboard_dir = os.path.join(args.log_dir)
-    writer = SummaryWriter(tensorboard_dir)
+    writer = SummaryWriter(log_dir)
     
     # Resume from checkpoint
     args.start_epoch = 0
@@ -153,12 +153,12 @@ def main(args: argparse.Namespace):
             scheduler.step(valid_loss)
             if early_stopper.step(valid_loss):
                 print(f'Early Stopping at epoch {epoch}, current valid_loss: {valid_loss.item()}')
-                save_on_master(args.distributed, current_state_dict, f'{args.save_dir}/{epoch}.pth')
+                save_on_master(args.distributed, current_state_dict, f'{save_dir}/{epoch}.pth')
                 break
         
         # Save Checkpoint
         if epoch % args.save_freq == 0 and epoch > 0:
-            save_on_master(args.distributed, current_state_dict, f'{args.save_dir}/{epoch}.pth')
+            save_on_master(args.distributed, current_state_dict, f'{save_dir}/{epoch}.pth')
     
     # Test phase
     print('End of training. Start evaluation on test set.')
